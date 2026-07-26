@@ -49,14 +49,6 @@ ADVICE_LABELS = {
     "b": "вариант Б",
 }
 
-# Текст кнопки → эхо-сообщение пользователя
-ADVICE_ECHO_LABELS: dict[tuple[str, str], str] = {
-    ("female", "a"): "Поступила бы так же, как ты",
-    ("female", "b"): "Не пудрила мальчикам мозги!",
-    ("male", "a"): "Стерпится — слюбится",
-    ("male", "b"): "Жалко этих парней!",
-}
-
 
 def advice_reply(gender: str, choice: str) -> str:
     if choice == "a":
@@ -166,12 +158,6 @@ async def clear_chat(
             pass  # сообщение уже удалено или недоступно
 
 
-async def send_user_echo(
-    context: ContextTypes.DEFAULT_TYPE, chat_id: int, text: str
-) -> None:
-    """Отправляет эхо выбранной кнопки — выглядит как ответ пользователя."""
-    msg = await context.bot.send_message(chat_id=chat_id, text=f"› {text}")
-    track_msg(context, msg.message_id)
 
 
 async def send_as_chat(
@@ -464,13 +450,11 @@ async def set_gender(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         f"👤 Пол: {GENDER_LABELS[gender]}\n{format_user(user)}\n\n{summary_text(data)}",
     )
 
-    # Убираем кнопки и отправляем эхо выбора пользователя
-    gender_label = "Девушка" if gender == "female" else "Парень"
+    # Убираем кнопки с вопроса о поле
     try:
         await query.edit_message_reply_markup(reply_markup=None)
     except Exception:
         pass
-    await send_user_echo(context, chat_id, gender_label)
 
     await send_story(context, chat_id, gender)
 
@@ -498,14 +482,11 @@ async def choose_advice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         f"{summary_text(data)}",
     )
 
-    # Убираем кнопки и отправляем эхо выбора пользователя
-    echo_text = ADVICE_ECHO_LABELS.get((gender, choice), "")
+    # Убираем кнопки с вариантами ответа
     try:
         await query.edit_message_reply_markup(reply_markup=None)
     except Exception:
         pass
-    if echo_text:
-        await send_user_echo(context, chat_id, echo_text)
 
     msg = await send_as_chat(
         context,
