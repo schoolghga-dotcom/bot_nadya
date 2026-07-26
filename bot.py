@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from dotenv import load_dotenv
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, User
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Message, Update, User
 from telegram.ext import (
     Application,
     CallbackQueryHandler,
@@ -47,6 +47,14 @@ GENDER_LABELS = {
 ADVICE_LABELS = {
     "a": "вариант А",
     "b": "вариант Б",
+}
+
+# Текст кнопки → эхо-сообщение пользователя
+ADVICE_ECHO_LABELS: dict[tuple[str, str], str] = {
+    ("female", "a"): "Поступила бы так же, как ты",
+    ("female", "b"): "Не пудрила мальчикам мозги!",
+    ("male", "a"): "Стерпится — слюбится",
+    ("male", "b"): "Жалко этих парней!",
 }
 
 
@@ -137,18 +145,47 @@ async def notify_admin(context: ContextTypes.DEFAULT_TYPE, text: str) -> None:
         logger.exception("Не удалось отправить статистику в админ-чат")
 
 
+# ---------------------------------------------------------------------------
+# Вспомогательные функции для отслеживания и очистки сообщений
+# ---------------------------------------------------------------------------
+
+def track_msg(context: ContextTypes.DEFAULT_TYPE, msg_id: int) -> None:
+    """Добавляет ID сообщения в список для последующей очистки."""
+    context.user_data.setdefault("msg_ids", []).append(msg_id)
+
+
+async def clear_chat(
+    context: ContextTypes.DEFAULT_TYPE, chat_id: int
+) -> None:
+    """Удаляет все отслеживаемые сообщения и сбрасывает список."""
+    msg_ids: list[int] = context.user_data.pop("msg_ids", [])
+    for mid in msg_ids:
+        try:
+            await context.bot.delete_message(chat_id=chat_id, message_id=mid)
+        except Exception:
+            pass  # сообщение уже удалено или недоступно
+
+
+async def send_user_echo(
+    context: ContextTypes.DEFAULT_TYPE, chat_id: int, text: str
+) -> None:
+    """Отправляет эхо выбранной кнопки — выглядит как ответ пользователя."""
+    msg = await context.bot.send_message(chat_id=chat_id, text=f"› {text}")
+    track_msg(context, msg.message_id)
+
+
 async def send_as_chat(
     context: ContextTypes.DEFAULT_TYPE,
     chat_id: int,
     text: str,
     reply_markup: InlineKeyboardMarkup | None = None,
     pause: float = PAUSE,
-) -> None:
+) -> Message:
     await asyncio.sleep(pause)
     await context.bot.send_chat_action(chat_id=chat_id, action="typing")
     typing = min(2.2, 0.55 + len(text) * 0.012)
     await asyncio.sleep(typing)
-    await context.bot.send_message(
+    return await context.bot.send_message(
         chat_id=chat_id,
         text=text,
         reply_markup=reply_markup,
@@ -165,7 +202,7 @@ async def ask_gender(context: ContextTypes.DEFAULT_TYPE, chat_id: int) -> None:
             ]
         ]
     )
-    await send_as_chat(
+    msg = await send_as_chat(
         context,
         chat_id,
         "Подожди секунду.\n"
@@ -177,6 +214,7 @@ async def ask_gender(context: ContextTypes.DEFAULT_TYPE, chat_id: int) -> None:
         reply_markup=keyboard,
         pause=0.7,
     )
+    track_msg(context, msg.message_id)
 
 
 async def send_story(
@@ -184,14 +222,15 @@ async def send_story(
     chat_id: int,
     gender: str,
 ) -> None:
-    await send_as_chat(
+    msg = await send_as_chat(
         context,
         chat_id,
         "Окей. Буду говорить с тобой без лишней осторожности, без прелюдий.",
         pause=0.6,
     )
+    track_msg(context, msg.message_id)
 
-    await send_as_chat(
+    msg = await send_as_chat(
         context,
         chat_id,
         "Меня зовут Надя. И я…\n"
@@ -201,9 +240,10 @@ async def send_story(
         "Они — не он… они не Максим.",
         pause=1.2,
     )
+    track_msg(context, msg.message_id)
 
     if gender == "male":
-        await send_as_chat(
+        msg = await send_as_chat(
             context,
             chat_id,
             "Возможно, тебе сложно меня понять.\n"
@@ -211,22 +251,25 @@ async def send_story(
             "с женской точки зрения.",
             pause=1.0,
         )
+        track_msg(context, msg.message_id)
 
-    await send_as_chat(
+    msg = await send_as_chat(
         context,
         chat_id,
         "Муж №1 — Лёша.\n"
         "Да, он такой же заботливый, но душит меня этим.",
         pause=1.0,
     )
-    await send_as_chat(
+    track_msg(context, msg.message_id)
+    msg = await send_as_chat(
         context,
         chat_id,
         "Муж №2 — Женя.\n"
         "С ним также легко, как с Максом, но он слишком ветреный.",
         pause=1.0,
     )
-    await send_as_chat(
+    track_msg(context, msg.message_id)
+    msg = await send_as_chat(
         context,
         chat_id,
         "Муж №3 — Костя.\n"
@@ -234,6 +277,7 @@ async def send_story(
         "чем просто вдохновение…",
         pause=1.0,
     )
+    track_msg(context, msg.message_id)
 
     if gender == "male":
         question = (
@@ -277,13 +321,14 @@ async def send_story(
             ]
         )
 
-    await send_as_chat(
+    msg = await send_as_chat(
         context,
         chat_id,
         question,
         reply_markup=keyboard,
         pause=1.2,
     )
+    track_msg(context, msg.message_id)
 
 
 async def send_finale(context: ContextTypes.DEFAULT_TYPE, chat_id: int) -> None:
@@ -301,7 +346,7 @@ async def send_finale(context: ContextTypes.DEFAULT_TYPE, chat_id: int) -> None:
         ]
     )
 
-    await send_as_chat(
+    msg = await send_as_chat(
         context,
         chat_id,
         "Ой, прости, мне надо бежать…\n"
@@ -310,7 +355,8 @@ async def send_finale(context: ContextTypes.DEFAULT_TYPE, chat_id: int) -> None:
         "Давай ещё раз встретимся. Как насчёт кино?",
         pause=1.0,
     )
-    await send_as_chat(
+    track_msg(context, msg.message_id)
+    msg = await send_as_chat(
         context,
         chat_id,
         "Свяжись со мной вот здесь:\n"
@@ -327,6 +373,7 @@ async def send_finale(context: ContextTypes.DEFAULT_TYPE, chat_id: int) -> None:
         reply_markup=keyboard,
         pause=1.2,
     )
+    track_msg(context, msg.message_id)
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -342,7 +389,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     keyboard = InlineKeyboardMarkup(
         [[InlineKeyboardButton("▶ Начать", callback_data="start_story")]]
     )
-    await update.message.reply_text(
+    msg = await update.message.reply_text(
         f"{hello}\n"
         "\n"
         "Привет. Давай поговорим начистоту?\n"
@@ -350,6 +397,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         "Если готов(а) — жми.",
         reply_markup=keyboard,
     )
+    track_msg(context, msg.message_id)
 
     if is_new:
         await notify_admin(
@@ -361,13 +409,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def start_story(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
-    await query.edit_message_reply_markup(reply_markup=None)
 
     user = update.effective_user
     chat_id = update.effective_chat.id
 
     data = load_stats()
     record = ensure_user(data, user)
+    is_restart = record["starts"] > 0 or record["restarts"] > 0
     if record["starts"] == 0:
         record["starts"] = 1
         event = "▶ Старт истории"
@@ -375,6 +423,13 @@ async def start_story(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         record["restarts"] = int(record.get("restarts") or 0) + 1
         event = "↻ Перезапуск истории"
     save_stats(data)
+
+    if is_restart:
+        # Удаляем всю историю чата и начинаем заново
+        await clear_chat(context, chat_id)
+    else:
+        # Первый запуск — просто убираем кнопку со стартового сообщения
+        await query.edit_message_reply_markup(reply_markup=None)
 
     await notify_admin(
         context,
@@ -393,7 +448,6 @@ async def start_story(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 async def set_gender(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
-    await query.edit_message_reply_markup(reply_markup=None)
 
     gender = query.data.replace("gender_", "")
     user = update.effective_user
@@ -410,13 +464,20 @@ async def set_gender(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         f"👤 Пол: {GENDER_LABELS[gender]}\n{format_user(user)}\n\n{summary_text(data)}",
     )
 
+    # Убираем кнопки и отправляем эхо выбора пользователя
+    gender_label = "Девушка" if gender == "female" else "Парень"
+    try:
+        await query.edit_message_reply_markup(reply_markup=None)
+    except Exception:
+        pass
+    await send_user_echo(context, chat_id, gender_label)
+
     await send_story(context, chat_id, gender)
 
 
 async def choose_advice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
-    await query.edit_message_reply_markup(reply_markup=None)
 
     choice = query.data.replace("advice_", "")
     user = update.effective_user
@@ -437,12 +498,22 @@ async def choose_advice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         f"{summary_text(data)}",
     )
 
-    await send_as_chat(
+    # Убираем кнопки и отправляем эхо выбора пользователя
+    echo_text = ADVICE_ECHO_LABELS.get((gender, choice), "")
+    try:
+        await query.edit_message_reply_markup(reply_markup=None)
+    except Exception:
+        pass
+    if echo_text:
+        await send_user_echo(context, chat_id, echo_text)
+
+    msg = await send_as_chat(
         context,
         chat_id,
         advice_reply(gender, choice),
         pause=0.9,
     )
+    track_msg(context, msg.message_id)
     await send_finale(context, chat_id)
 
 
