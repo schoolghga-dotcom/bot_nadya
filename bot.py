@@ -31,7 +31,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 PAUSE = 1.4
-ADMIN_CHAT_ID = 3942339628
+ADMIN_CHAT_ID = -1003942339628
 STATS_FILE = Path(__file__).resolve().parent / "stats.json"
 
 INSTAGRAM_URL = "https://instagram.com/nadyagotmarried"
