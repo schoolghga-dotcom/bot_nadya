@@ -321,7 +321,6 @@ async def send_finale(context: ContextTypes.DEFAULT_TYPE, chat_id: int) -> None:
     keyboard = InlineKeyboardMarkup(
         [
             [InlineKeyboardButton("Поддержать проект", url=PLANETA_URL)],
-            [InlineKeyboardButton("Instagram", url=INSTAGRAM_URL)],
             [InlineKeyboardButton("Telegram", url=TELEGRAM_URL)],
             [
                 InlineKeyboardButton(
