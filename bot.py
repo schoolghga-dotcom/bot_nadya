@@ -347,10 +347,9 @@ async def send_finale(context: ContextTypes.DEFAULT_TYPE, chat_id: int) -> None:
         chat_id,
         "Свяжись со мной вот здесь:\n"
         "\n"
-        f"Instagram: {INSTAGRAM_URL}\n"
+        f"Юзер во всех соц.сетях:\n"
+        f"@nadyagotmarried\n"
         f"Telegram: {TELEGRAM_URL}\n"
-        "\n"
-        "@nadyagotmarried\n"
         "\n"
         "Если хочешь меня поддержать — это можно сделать тут:\n"
         f"{PLANETA_URL}\n"
