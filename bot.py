@@ -31,7 +31,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 PAUSE = 1.4
-ADMIN_CHAT_ID = -1003942339628
+ADMIN_CHAT_ID = 3942339628
 STATS_FILE = Path(__file__).resolve().parent / "stats.json"
 
 INSTAGRAM_URL = "https://instagram.com/nadyagotmarried"
@@ -140,6 +140,7 @@ async def notify_admin(context: ContextTypes.DEFAULT_TYPE, text: str) -> None:
 # ---------------------------------------------------------------------------
 # Вспомогательные функции для отслеживания и очистки сообщений
 # ---------------------------------------------------------------------------
+
 
 def track_msg(context: ContextTypes.DEFAULT_TYPE, msg_id: int) -> None:
     """Добавляет ID сообщения в список для последующей очистки."""
@@ -345,16 +346,11 @@ async def send_finale(context: ContextTypes.DEFAULT_TYPE, chat_id: int) -> None:
     msg = await send_as_chat(
         context,
         chat_id,
-        "Свяжись со мной вот здесь:\n"
-        "\n"
-        f"Instagram: {INSTAGRAM_URL}\n"
-        f"Telegram: {TELEGRAM_URL}\n"
-        "\n"
-        "@nadyagotmarried\n"
-        "\n"
+        "Свяжись со мной вот здесь:\n\n"
+        "Юзер во всех соц.сетях\n"
+        "@nadyagotmarried\n\n"
         "Если хочешь меня поддержать — это можно сделать тут:\n"
-        f"{PLANETA_URL}\n"
-        "\n"
+        f"{PLANETA_URL}\n\n"
         "Увидимся!",
         reply_markup=keyboard,
         pause=1.2,
@@ -421,6 +417,7 @@ async def start_story(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         context,
         f"{event}\n{format_user(user)}\n"
         f"Пол: {GENDER_LABELS.get(record.get('gender') or 'unknown')}\n\n"
+
         f"{summary_text(data)}",
     )
 
@@ -479,6 +476,7 @@ async def choose_advice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         f"💬 Ответ: {ADVICE_LABELS[choice]}\n"
         f"{format_user(user)}\n"
         f"Пол: {GENDER_LABELS.get(gender)}\n\n"
+
         f"{summary_text(data)}",
     )
 
